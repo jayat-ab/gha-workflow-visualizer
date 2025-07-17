@@ -7,6 +7,7 @@ A web app to visualize GitHub Actions workflow dependencies using Mermaid diagra
 - Paste your GitHub Actions workflow YAML
 - Instantly see a Mermaid diagram of job dependencies
 - Built with Next.js, React, Mermaid, and js-yaml
+- Automated releases with GitHub Actions
 
 ## Getting Started
 
@@ -50,7 +51,22 @@ package.json          # Project dependencies and scripts
 tsconfig.json         # TypeScript configuration
 README.md             # Project documentation
 LICENSE               # Apache 2.0 License
+.github/
+  workflows/
+    release.yml       # Automated release workflow
 ```
+
+## Release Workflow
+
+This project uses GitHub Actions for automated releases:
+
+- On every push to `main`, the workflow:
+  - Installs dependencies
+  - Runs `npm run release` (using [standard-version](https://github.com/conventional-changelog/standard-version))
+  - Pushes version bumps and tags
+  - Publishes a GitHub Release with the changelog
+
+See [`.github/workflows/release.yml`](.github/workflows/release.yml) for details.
 
 ## Technologies Used
 
@@ -58,6 +74,7 @@ LICENSE               # Apache 2.0 License
 - [React](https://react.dev/)
 - [Mermaid](https://mermaid-js.github.io/)
 - [js-yaml](https://github.com/nodeca/js-yaml)
+- [standard-version](https://github.com/conventional-changelog/standard-version)
 - TypeScript
 
 ## License
@@ -67,4 +84,4 @@ Apache 2.0. See [LICENSE](LICENSE).
 ---
 
 **Contributions welcome!**  
-Feel free to open issues or pull
+Feel free to open issues or pull requests.
