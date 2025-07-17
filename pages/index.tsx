@@ -375,6 +375,64 @@ function exportSVG(svgContent: string, filename?: string) {
   }, 100);
 }
 
+// ------ Markdown Export ------
+function generateMarkdownDoc(workflow: any, triggers: TriggerDetail[], jobSteps: JobSteps[]): string {
+  let md = `# GitHub Actions Workflow Documentation\n\n`;
+
+  if (workflow.name) {
+    md += `## Workflow Name\n${workflow.name}\n\n`;
+  }
+
+  md += `## Triggers\n`;
+  if (triggers.length === 0) {
+    md += `No triggers defined.\n\n`;
+  } else {
+    triggers.forEach(trigger => {
+      md += `- **${trigger.event}**: ${triggerExamples[trigger.event] || ""}\n`;
+      if (trigger.detailsObj) {
+        md += `  - Details: \`${JSON.stringify(trigger.detailsObj)}\`\n`;
+      }
+    });
+    md += `\n`;
+  }
+
+  md += `## Jobs\n`;
+  jobSteps.forEach(job => {
+    md += `### Job: \`${job.jobName}\`\n`;
+    md += `| Step Name | Uses | Run |\n|---|---|---|\n`;
+    job.steps.forEach(step => {
+      let usesDocLink = "";
+      if (step.uses) {
+        // Suggest link to official action docs if it's a marketplace action
+        const match = step.uses.match(/^([^\/]+)\/([^\/]+)@/);
+        if (match) {
+          usesDocLink = `([docs](https://github.com/${match[1]}/${match[2]}))`;
+        }
+      }
+      md += `| ${step.name || ""} | ${step.uses ? `${step.uses} ${usesDocLink}` : ""} | ${step.run || ""} |\n`;
+    });
+    md += `\n`;
+  });
+
+  md += `## Further Reading\n- [GitHub Actions Documentation](https://docs.github.com/en/actions)\n`;
+
+  return md;
+}
+
+function exportMarkdown(markdown: string, filename?: string) {
+  const blob = new Blob([markdown], { type: "text/markdown" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename || `workflow-doc-${Date.now()}.md`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 100);
+}
+
 export default function Home() {
   const [yamlInput, setYamlInput] = useState("");
   const [diagram, setDiagram] = useState("");
@@ -429,6 +487,16 @@ export default function Home() {
   function handleExportSVG() {
     if (!svgExport) return;
     exportSVG(svgExport);
+  }
+
+  function handleExportMarkdown() {
+    try {
+      const workflow = YAML.load(yamlInput);
+      const md = generateMarkdownDoc(workflow, triggers, jobSteps);
+      exportMarkdown(md);
+    } catch (err: any) {
+      setError("Error exporting markdown: " + (err?.message ?? "Unknown error"));
+    }
   }
 
   return (
@@ -561,6 +629,21 @@ export default function Home() {
                     }}
                   >
                     Export as SVG
+                  </button>
+                  <button
+                    onClick={handleExportMarkdown}
+                    style={{
+                      padding: "7px 18px",
+                      fontWeight: 500,
+                      fontSize: "1rem",
+                      background: "#e0c131",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: 7,
+                      cursor: "pointer"
+                    }}
+                  >
+                    Export as Markdown
                   </button>
                 </div>
               </section>
