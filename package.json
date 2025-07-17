@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "release": "standard-version",
     "dev": "next dev",
     "build": "next build",
     "start": "next start"
@@ -19,6 +20,7 @@
     "@types/mermaid": "^9.2.0",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
+    "standard-version": "^9.5.0",
     "typescript": "^5.4.0"
   }
 }
