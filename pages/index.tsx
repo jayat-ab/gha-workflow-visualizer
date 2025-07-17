@@ -141,11 +141,209 @@ function JobStepsList({ jobSteps }: { jobSteps: JobSteps[] }) {
   );
 }
 
+// --------- Connect to GitHub Repo (Public or Token) ---------
+function RepoWorkflowSection({
+  onWorkflowLoaded,
+}: {
+  onWorkflowLoaded: (yaml: string) => void;
+}) {
+  const [repoUrl, setRepoUrl] = useState("");
+  const [token, setToken] = useState("");
+  const [workflows, setWorkflows] = useState<{ name: string; path: string }[]>([]);
+  const [selectedWorkflow, setSelectedWorkflow] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string>("");
+
+  function parseRepoInfo(url: string) {
+    // Remove .git if present
+    url = url.replace(/\.git$/, "");
+    const match = url.match(/github\.com[:\/]([^\/]+)\/([^\/]+)(\/)?/i);
+    if (!match) return null;
+    return { owner: match[1], repo: match[2] };
+  }
+
+  async function handleFetchWorkflows() {
+    setError("");
+    setWorkflows([]);
+    setSelectedWorkflow("");
+    const info = parseRepoInfo(repoUrl);
+    if (!info) {
+      setError("Invalid GitHub repository URL.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const apiUrl = `https://api.github.com/repos/${info.owner}/${info.repo}/contents/.github/workflows`;
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `token ${token}`;
+      const resp = await fetch(apiUrl, { headers });
+      if (!resp.ok) throw new Error("Could not fetch workflows (repo may be private or have none)");
+      const files = await resp.json();
+      const ymls = files
+        .filter((f: any) =>
+          (f.type === "file") &&
+          (f.name.endsWith(".yml") || f.name.endsWith(".yaml"))
+        )
+        .map((f: any) => ({ name: f.name, path: f.path }));
+      if (ymls.length === 0) throw new Error("No workflow files found in this repo.");
+      setWorkflows(ymls);
+    } catch (err: any) {
+      setError(err.message || "Unknown error fetching workflows.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleLoadSelectedWorkflow() {
+    setError("");
+    const info = parseRepoInfo(repoUrl);
+    if (!info || !selectedWorkflow) {
+      setError("Invalid repo or workflow selection.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const apiUrl = `https://api.github.com/repos/${info.owner}/${info.repo}/contents/${selectedWorkflow}`;
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `token ${token}`;
+      const resp = await fetch(apiUrl, { headers });
+      if (!resp.ok) throw new Error("Could not fetch workflow file.");
+
+      let yaml: string;
+      const text = await resp.text();
+      try {
+        const file = JSON.parse(text);
+        if (!file.content) throw new Error("Workflow file has no content.");
+        yaml = atob(file.content.replace(/\n/g, ""));
+      } catch (err) {
+        yaml = text;
+      }
+      onWorkflowLoaded(yaml);
+    } catch (err: any) {
+      setError(err.message || "Unknown error loading workflow.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <section
+      style={{
+        background: "#fff",
+        borderRadius: 12,
+        boxShadow: "0 2px 6px rgba(0,0,0,0.04)",
+        padding: "24px 32px",
+        marginBottom: 32,
+        border: "1px solid #ececec",
+      }}
+    >
+      <h2 style={{ marginTop: 0, fontSize: "1.4rem", borderBottom: "2px solid #eaeaea", paddingBottom: 8 }}>
+        Connect to GitHub Repo
+      </h2>
+      <div style={{ marginBottom: 10 }}>
+        <input
+          type="text"
+          value={repoUrl}
+          onChange={e => setRepoUrl(e.target.value)}
+          placeholder="Paste GitHub repo URL (e.g. https://github.com/owner/repo)"
+          style={{
+            width: "55%",
+            padding: "9px 12px",
+            fontSize: "1rem",
+            borderRadius: 7,
+            border: "1px solid #e3e8ee",
+            background: "#f9fafb",
+            marginRight: 10,
+            fontFamily: "inherit"
+          }}
+        />
+        <input
+          type="password"
+          value={token}
+          onChange={e => setToken(e.target.value)}
+          placeholder="Personal Access Token (optional for private repos)"
+          style={{
+            width: "35%",
+            padding: "9px 12px",
+            fontSize: "1rem",
+            borderRadius: 7,
+            border: "1px solid #e3e8ee",
+            background: "#f9fafb",
+            fontFamily: "inherit"
+          }}
+        />
+      </div>
+      <div style={{ fontSize: "0.95rem", color: "#888", marginBottom: 10 }}>
+        For private repositories, enter a GitHub Personal Access Token with <code>repo</code> scope. Your token is only used in your browser.
+      </div>
+      <div style={{ marginBottom: 18 }}>
+        <button
+          onClick={handleFetchWorkflows}
+          disabled={loading}
+          style={{
+            padding: "9px 20px",
+            fontWeight: 500,
+            fontSize: "1rem",
+            background: "#3167e0",
+            color: "#fff",
+            border: "none",
+            borderRadius: 7,
+            cursor: "pointer"
+          }}
+        >
+          {loading ? "Loading..." : "Fetch Workflows"}
+        </button>
+      </div>
+      {error && <div style={{ color: "#c00", marginBottom: 14 }}>{error}</div>}
+      {workflows.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ fontWeight: 500, marginRight: 8 }}>Select Workflow File:</label>
+          <select
+            value={selectedWorkflow}
+            onChange={e => setSelectedWorkflow(e.target.value)}
+            style={{
+              padding: "8px 12px",
+              fontSize: "1rem",
+              borderRadius: 7,
+              border: "1px solid #e3e8ee",
+              background: "#f9fafb",
+              fontFamily: "inherit",
+              marginRight: 10,
+            }}
+          >
+            <option value="">-- Choose --</option>
+            {workflows.map(f => (
+              <option key={f.path} value={f.path}>{f.name}</option>
+            ))}
+          </select>
+          <button
+            onClick={handleLoadSelectedWorkflow}
+            disabled={loading || !selectedWorkflow}
+            style={{
+              padding: "8px 16px",
+              fontWeight: 500,
+              fontSize: "1rem",
+              background: "#1ca772",
+              color: "#fff",
+              border: "none",
+              borderRadius: 7,
+              cursor: "pointer"
+            }}
+          >
+            {loading ? "Loading..." : "Load Selected Workflow"}
+          </button>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function Home() {
   const [yamlInput, setYamlInput] = useState("");
   const [diagram, setDiagram] = useState("");
   const [jobSteps, setJobSteps] = useState<JobSteps[]>([]);
   const [triggers, setTriggers] = useState<TriggerDetail[]>([]);
+  const [error, setError] = useState<string>("");
 
   function handleYamlChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
     setYamlInput(e.target.value);
@@ -155,13 +353,20 @@ export default function Home() {
     try {
       const workflow = YAML.load(yamlInput);
       const graph = generateMermaid(workflow);
-      setDiagram(graph);
+      if (graph.startsWith("graph ")) {
+        setDiagram(graph);
+        setError("");
+      } else {
+        setDiagram("");
+        setError("Could not visualize workflow: Invalid or missing jobs section in YAML.");
+      }
       setJobSteps(extractJobSteps(workflow));
       setTriggers(extractTriggers(workflow));
-    } catch (err) {
-      setDiagram("%% Error parsing YAML");
+    } catch (err: any) {
+      setDiagram("");
       setJobSteps([]);
       setTriggers([]);
+      setError("Error parsing YAML: " + (err?.message ?? "Unknown error"));
     }
   }
 
@@ -170,17 +375,26 @@ export default function Home() {
     setDiagram("");
     setJobSteps([]);
     setTriggers([]);
+    setError("");
+  }
+
+  function handleWorkflowLoaded(yaml: string) {
+    setYamlInput(yaml);
+    setDiagram("");
+    setJobSteps([]);
+    setTriggers([]);
+    setError("");
   }
 
   return (
     <>
       {/* Professional font - Inter from Google Fonts */}
       <Head>
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-  </Head>
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
+        />
+      </Head>
       <main
         style={{
           fontFamily: "'Inter', Arial, Helvetica, sans-serif",
@@ -199,6 +413,7 @@ export default function Home() {
           }}>
             GitHub Actions Workflow Visualizer
           </h1>
+          <RepoWorkflowSection onWorkflowLoaded={handleWorkflowLoaded} />
           <textarea
             value={yamlInput}
             onChange={handleYamlChange}
@@ -251,7 +466,20 @@ export default function Home() {
             </button>
           </div>
           <div style={{ marginTop: 8 }}>
-            {triggers.length > 0 && <TriggersList triggers={triggers} />}
+            {error && (
+              <section
+                style={{
+                  color: "#c00",
+                  background: "#fff8f8",
+                  borderRadius: 8,
+                  padding: 16,
+                  marginBottom: 24,
+                  border: "1px solid #ffbaba",
+                }}
+              >
+                <strong>{error}</strong>
+              </section>
+            )}
             {diagram && (
               <section
                 style={{
@@ -285,7 +513,7 @@ export default function Home() {
 }
 
 function generateMermaid(workflow: any): string {
-  if (!workflow || !workflow.jobs) return "%% Invalid workflow";
+  if (!workflow || !workflow.jobs || Object.keys(workflow.jobs).length === 0) return "";
   let graph = "graph TD\n";
   for (const [jobName, jobDefRaw] of Object.entries(workflow.jobs)) {
     const jobDef = jobDefRaw as { needs?: string | string[] };
