@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import YAML from "js-yaml";
 import dynamic from "next/dynamic";
+import Head from "next/head";
 
 const Mermaid = dynamic(() => import("../components/Mermaid"), { ssr: false });
 
@@ -174,10 +175,12 @@ export default function Home() {
   return (
     <>
       {/* Professional font - Inter from Google Fonts */}
-      <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-        rel="stylesheet"
-      />
+      <Head>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </Head>
       <main
         style={{
           fontFamily: "'Inter', Arial, Helvetica, sans-serif",
