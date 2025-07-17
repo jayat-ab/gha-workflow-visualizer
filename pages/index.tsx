@@ -361,12 +361,12 @@ function RepoWorkflowSection({
 }
 
 // ------ Export helpers ------
-function exportSVG(svgContent: string) {
+function exportSVG(svgContent: string, filename?: string) {
   const blob = new Blob([svgContent], { type: "image/svg+xml" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = "workflow-diagram.svg";
+  a.download = filename || `workflow-diagram-${Date.now()}.svg`;
   document.body.appendChild(a);
   a.click();
   setTimeout(() => {

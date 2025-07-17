@@ -8,8 +8,6 @@
     "start": "next start"
   },
   "dependencies": {
-    "@resvg/resvg-js": "^2.6.2",
-    "canvg": "^4.0.3",
     "js-yaml": "^4.1.0",
     "mermaid": "^10.9.0",
     "next": "latest",
