@@ -113,8 +113,8 @@ function JobStepsList({ jobSteps }: { jobSteps: JobSteps[] }) {
             </thead>
             <tbody>
               {steps.map((step, i) => (
-                <tr key={i}>
-                  <td>{step.name || <i>(unnamed)</i>}</td>
+                <tr key={step.name || `${jobName}-${i}`}>
+                  <td>{step.name || <span aria-label="Unnamed step" style={{ fontStyle: "italic" }}>(unnamed)</span>}</td>
                   <td>{step.uses || ""}</td>
                   <td>{step.run || ""}</td>
                 </tr>
