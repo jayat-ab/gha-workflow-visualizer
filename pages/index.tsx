@@ -162,7 +162,6 @@ function RepoWorkflowSection({
   };
 
   function parseRepoInfo(url: string) {
-    // Remove .git if present
     url = url.replace(/\.git$/, "");
     const match = url.match(/github\.com[:\/]([^\/]+)\/([^\/]+)(\/)?/i);
     if (!match) return null;
@@ -361,12 +360,28 @@ function RepoWorkflowSection({
   );
 }
 
+// ------ Export helpers ------
+function exportSVG(svgContent: string) {
+  const blob = new Blob([svgContent], { type: "image/svg+xml" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "workflow-diagram.svg";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 100);
+}
+
 export default function Home() {
   const [yamlInput, setYamlInput] = useState("");
   const [diagram, setDiagram] = useState("");
   const [jobSteps, setJobSteps] = useState<JobSteps[]>([]);
   const [triggers, setTriggers] = useState<TriggerDetail[]>([]);
   const [error, setError] = useState<string>("");
+  const [svgExport, setSvgExport] = useState<string>("");
 
   function handleYamlChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
     setYamlInput(e.target.value);
@@ -399,6 +414,7 @@ export default function Home() {
     setJobSteps([]);
     setTriggers([]);
     setError("");
+    setSvgExport("");
   }
 
   function handleWorkflowLoaded(yaml: string) {
@@ -407,11 +423,16 @@ export default function Home() {
     setJobSteps([]);
     setTriggers([]);
     setError("");
+    setSvgExport("");
+  }
+
+  function handleExportSVG() {
+    if (!svgExport) return;
+    exportSVG(svgExport);
   }
 
   return (
     <>
-      {/* Professional font - Inter from Google Fonts */}
       <Head>
         <link
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
@@ -522,7 +543,25 @@ export default function Home() {
                   marginBottom: 20
                 }}>Workflow Diagram</h2>
                 <div>
-                  <Mermaid chart={diagram} />
+                  <Mermaid chart={diagram} onExportReady={setSvgExport} />
+                </div>
+                <div style={{ marginTop: 18, display: "flex", gap: 16 }}>
+                  <button
+                    onClick={handleExportSVG}
+                    disabled={!svgExport}
+                    style={{
+                      padding: "7px 18px",
+                      fontWeight: 500,
+                      fontSize: "1rem",
+                      background: "#2c5aa0",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: 7,
+                      cursor: "pointer"
+                    }}
+                  >
+                    Export as SVG
+                  </button>
                 </div>
               </section>
             )}
