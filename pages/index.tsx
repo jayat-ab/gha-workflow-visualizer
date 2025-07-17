@@ -154,6 +154,13 @@ function RepoWorkflowSection({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
 
+  type GitHubFile = {
+    name: string;
+    path: string;
+    type: string;
+    [key: string]: any;
+  };
+
   function parseRepoInfo(url: string) {
     // Remove .git if present
     url = url.replace(/\.git$/, "");
@@ -175,16 +182,24 @@ function RepoWorkflowSection({
     try {
       const apiUrl = `https://api.github.com/repos/${info.owner}/${info.repo}/contents/.github/workflows`;
       const headers: Record<string, string> = {};
-      if (token) headers['Authorization'] = `token ${token}`;
+      if (token) headers['Authorization'] = `Bearer ${token}`;
       const resp = await fetch(apiUrl, { headers });
-      if (!resp.ok) throw new Error("Could not fetch workflows (repo may be private or have none)");
+      if (!resp.ok) {
+        if (resp.status === 404) {
+          throw new Error("No workflows found or repository does not exist.");
+        } else if (resp.status === 401 || resp.status === 403) {
+          throw new Error("Authentication failed or you do not have permission to access this repository.");
+        } else {
+          throw new Error(`Failed to fetch workflows. HTTP status: ${resp.status}`);
+        }
+      }
       const files = await resp.json();
       const ymls = files
-        .filter((f: any) =>
+        .filter((f: GitHubFile) =>
           (f.type === "file") &&
           (f.name.endsWith(".yml") || f.name.endsWith(".yaml"))
         )
-        .map((f: any) => ({ name: f.name, path: f.path }));
+        .map((f: GitHubFile) => ({ name: f.name, path: f.path }));
       if (ymls.length === 0) throw new Error("No workflow files found in this repo.");
       setWorkflows(ymls);
     } catch (err: any) {
@@ -205,9 +220,17 @@ function RepoWorkflowSection({
     try {
       const apiUrl = `https://api.github.com/repos/${info.owner}/${info.repo}/contents/${selectedWorkflow}`;
       const headers: Record<string, string> = {};
-      if (token) headers['Authorization'] = `token ${token}`;
+      if (token) headers['Authorization'] = `Bearer ${token}`;
       const resp = await fetch(apiUrl, { headers });
-      if (!resp.ok) throw new Error("Could not fetch workflow file.");
+      if (!resp.ok) {
+        if (resp.status === 404) {
+          throw new Error("Workflow file not found (404).");
+        } else if (resp.status === 401 || resp.status === 403) {
+          throw new Error("Authentication or permission issue (401/403).");
+        } else {
+          throw new Error(`Failed to fetch workflow file (status: ${resp.status}).`);
+        }
+      }
 
       let yaml: string;
       const text = await resp.text();
