@@ -8,9 +8,14 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # ensures GITHUB_TOKEN can push commits/tags
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true  # ensures GITHUB_TOKEN is used
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -22,8 +27,8 @@ jobs:
 
       - name: Set up Git user
         run: |
-          git config --global user.name "Jayat Markan"
-          git config --global user.email "jayat.markan@applyboard.com"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Run standard-version
         run: npm run release
