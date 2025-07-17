@@ -67,4 +67,4 @@ Apache 2.0. See [LICENSE](LICENSE).
 ---
 
 **Contributions welcome!**  
-Feel free to open issues or pull 
+Feel free to open issues or pull
