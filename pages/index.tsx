@@ -22,6 +22,13 @@ type TriggerDetail = {
   detailsObj?: any;
 };
 
+type Workflow = {
+  name?: string;
+  on?: any;
+  jobs?: Record<string, any>;
+  [key: string]: any;
+};
+
 const triggerExamples: Record<string, string> = {
   push: "When code is pushed to the repository.",
   pull_request: "When a pull request is opened or updated.",
@@ -376,7 +383,10 @@ function exportSVG(svgContent: string, filename?: string) {
 }
 
 // ------ Markdown Export ------
-function generateMarkdownDoc(workflow: any, triggers: TriggerDetail[], jobSteps: JobSteps[]): string {
+// Regex to match marketplace actions in the format owner/repo@version
+const MARKETPLACE_ACTION_REGEX = /^([^\/]+)\/([^\/]+)@.+$/;
+
+function generateMarkdownDoc(workflow: Workflow, triggers: TriggerDetail[], jobSteps: JobSteps[]): string {
   let md = `# GitHub Actions Workflow Documentation\n\n`;
 
   if (workflow.name) {
@@ -404,7 +414,7 @@ function generateMarkdownDoc(workflow: any, triggers: TriggerDetail[], jobSteps:
       let usesDocLink = "";
       if (step.uses) {
         // Suggest link to official action docs if it's a marketplace action
-        const match = step.uses.match(/^([^\/]+)\/([^\/]+)@/);
+        const match = step.uses.match(MARKETPLACE_ACTION_REGEX);
         if (match) {
           usesDocLink = `([docs](https://github.com/${match[1]}/${match[2]}))`;
         }
@@ -491,7 +501,7 @@ export default function Home() {
 
   function handleExportMarkdown() {
     try {
-      const workflow = YAML.load(yamlInput);
+      const workflow = YAML.load(yamlInput) as Workflow;
       const md = generateMarkdownDoc(workflow, triggers, jobSteps);
       exportMarkdown(md);
     } catch (err: any) {
